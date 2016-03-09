@@ -16,39 +16,39 @@ MAIL_AFTER=45
 mkdir -p "${DATA_DIR}" || exit 1
 
 if [ ! -f "${RUN_FILE}" ]; then
-  touch "${RUN_FILE}" || exit 1
+	touch "${RUN_FILE}" || exit 1
 
-  echo 0 > "${RUN_FILE}"
+	echo 0 > "${RUN_FILE}"
 fi
 
 if [ ! -f "${USERS_FILE}" ]; then
-  touch "${USERS_FILE}" || exit 1
+	touch "${USERS_FILE}" || exit 1
 fi
 
-cd "${BASE_DIR}"
+cd "${BASE_DIR}" || exit 1
 
 if [ ! -z "$(git status --porcelain)" ]; then
-  run="$(cat "${RUN_FILE}")"
+	run="$(cat "${RUN_FILE}")"
 
-  if [ "${run}" -eq "0" ]; then
-    echo "$(who | cut -d ' ' -f 1 | sort -u)" > "${USERS_FILE}"
-  fi
+	if [ "${run}" -eq "0" ]; then
+		echo "$(who | cut -d ' ' -f 1 | sort -u)" > "${USERS_FILE}"
+	fi
 
-  run="$(expr "${run}" + 1)"
+	run="$(expr "${run}" + 1)"
 
-  echo "${run}" > "${RUN_FILE}"
+	echo "${run}" > "${RUN_FILE}"
 
-  if [ "$(expr "${run}" % "${WALL_AFTER}")" -eq "0" ]; then
-    # DO NOT REMOVE THE TABS! We need them to make the here document working.
-    wall <<-END
-	Warning: uncommited changes detected in ${BASE_DIR}. Please clean up!
-	END
-  fi
+	if [ "$(expr "${run}" % "${WALL_AFTER}")" -eq "0" ]; then
+		wall <<-END
+		Warning: uncommited changes detected in ${BASE_DIR}. Please clean up!
+		END
+	fi
 
-  if [ "$(expr "${run}" % "${MAIL_AFTER}")" -eq "0" ]; then
-    # Send mail
-  fi
+	if [ "$(expr "${run}" % "${MAIL_AFTER}")" -eq "0" ]; then
+		# Send mail
+		:
+	fi
 else
-  echo 0 > "${RUN_FILE}"
-  echo -n > "${USERS_FILE}"
+	echo 0 > "${RUN_FILE}"
+	echo > "${USERS_FILE}"
 fi
