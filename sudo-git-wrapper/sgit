@@ -1,0 +1,44 @@
+#!/bin/sh
+
+get_real_user_name() {
+    # We use logname to try to get username of user who sudo'ed to root.
+    name=$(logname 2>/dev/null)
+
+    if [ -z "$name" ]; then
+        name=$(whoami)
+        echo "I don't know who you are, all you do will be done as $name." >&2
+    else
+        echo "You would appear to be $name." >&2
+    fi
+
+    echo $name
+}
+
+get_user_home() {
+    # $1: User whose home dir you want
+    getent passwd $1 | cut -d: -f6
+}
+
+check_if_has_configured_git() {
+    # $1: User name
+    # Check whether user has configured git
+    home="$(get_user_home $1)"
+    gitname=$(HOME=$home git config --get user.name)
+    gitemail=$(HOME=$home git config --get user.email)
+
+    if [ -z "$gitname" ] || [ -z "$gitemail" ]; then
+      echo "As user $name configure git options 'user.name' and 'user.email'!"
+      exit 1
+    fi
+}
+
+# Main
+name="$(get_real_user_name)"
+check_if_has_configured_git $name
+
+# Do the magic! We set HOME variable to point to home folder of the user.
+# Git will get its config from there.
+HOME=$(get_user_home $name) git "$@"
+
+echo "Done." >&2
+
