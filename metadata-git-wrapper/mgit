@@ -1,0 +1,64 @@
+#!/bin/sh
+
+run_git() {
+    # Use this if you want to use the standard git
+    # git "$@"
+
+    # Use this if you want to use sudo-git-wrapper, which is usually the case
+    # if you want to use this script for keeping `/etc` under git
+    sgit "$@"
+}
+
+# Ideally, all of this would be done from git hooks. However, they are unusable in this case. Git is
+# running with umask of 077, because we don't want files it checks out to be readable by everybody.
+# Therefore hook is running with umask of 077 and thus it cannot restore original permissions. This
+# is why, unfortunately, we are doing it here.
+
+store_medatada() {
+    cd `git rev-parse --show-toplevel`
+
+    # We don't want to track medatada of... metadata.
+    EXCLUDES="./.git ./.metadata"
+
+    # Create .metadata file and change its permissions to 600, so that no-one but owner can read it,
+    # since it may contain confidential information.
+    touch .metadata
+    chmod 600 .metadata
+
+    # Generate content for the metadata file. Set of tracked metadata is the same as default except
+    # modification time.
+    echo $EXCLUDES | tr " " "\n" | fmtree -k "flags,gid,link,mode,nlink,size,uid" -cnX /dev/stdin > .metadata
+}
+
+restore_metadata() {
+    # -f input file
+    # -e Don't complain about files that are in the spec but missing in hierarchy
+    # -q Don't complain when creating a symlinked directory
+    # -t Fix mtime, device type, symlink target...
+    # -i In conjunction with -U, set also schg and sappnd flags
+    # -U Modify owner, group, permissions, flags, create missing directories, devices, symlinks, and don't complain about it.
+
+    cd `git rev-parse --show-toplevel`
+    if [ -f .metadata ]; then
+      fmtree -f .metadata -eqiU > /dev/null
+      mtree_exit=$?
+      if [ $mtree_exit -ne 0 ]; then
+        echo "mtree exited with exit status $mtree_exit"
+      fi
+    fi
+}
+
+orig_dir=`pwd`
+
+store_medatada
+
+(
+    # In a subshell, so that changed umask won't affect rest of this script
+    # We are setting this umask because we don't want to have strange or world readable permissions
+    # on files git creates before we can restore their metadata.
+    umask 077
+    cd $orig_dir
+    run_git "$@"
+)
+
+restore_metadata

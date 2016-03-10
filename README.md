@@ -12,3 +12,8 @@ Runs an administrative/maintenance command properly: with backups before and aft
 ------------------
 
 Use git as root with your user config.
+
+`metadata-git-wrapper`
+----------------------
+
+Simple minimalistic wrapper around git which stores metadata about files: for `/etc` under git (FreeBSD only).
