@@ -16,6 +16,12 @@ run_git() {
 	mgit $@
 }
 
+# Techwiki location (for setup logs)
+techwiki_location="/root/techwiki"
+
+# Setup log location (for this particular server / jail)
+techwiki_setup_log="servers/inteligent/setup.md"
+
 ### READ CONFIG -- DEAD NOW ####################################################
 
 #CONFIG='/usr/local/etc/defaults/properly.conf'
@@ -90,7 +96,7 @@ execute() {
 dirty_config_dirs() {
 	dirty=""
 	for dir in $etcundergit_dirs; do
-		( cd $dir && git status ) | grep -q "working directory clean" \
+		( cd $dir && [ ! -z "$(git status --porcelain)" ] ) | grep -q "working directory clean" \
 			|| dirty="$dirty $dir"
 	done
 	echo $dirty
