@@ -17,3 +17,8 @@ Use git as root with your user config.
 ----------------------
 
 Simple minimalistic wrapper around git which stores metadata about files: for `/etc` under git (FreeBSD only).
+
+`repo-dirty-checker`
+--------------------
+
+Periodically checks whether someone has left a mess behind in `/etc` under git.
