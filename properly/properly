@@ -5,9 +5,16 @@ echo THIS SCRIPT IS A MESS AND NEEDS CLEANUP AND IS ONLY HERE IN HOPE THAT IT WI
 ### CONFIG #####################################################################
 # this should be moved to something like /usr/local/etc/properly.conf
 
+# Subvolume to recurively snapshot
 snapshot_subvol="zroot/ROOT"
-#etcundergit_dirs="/etc /usr/local/etc"
-etcundergit_dirs="/home/kamila/u/projects/chaOS /home/kamila/u/projects/songbook/web /home/kamila/u/projects/utils/properly"
+
+# Config directories under git
+etcundergit_dirs="/etc /usr/local/etc"
+
+# Git executable to use (for custom git wrappers)
+run_git() {
+	mgit $@
+}
 
 ### READ CONFIG -- DEAD NOW ####################################################
 
@@ -22,7 +29,7 @@ etcundergit_dirs="/home/kamila/u/projects/chaOS /home/kamila/u/projects/songbook
 
 usage() {
 	echo "Usage: $0 [-t title] [-s slug] command [arguments...]"
-	exit 47
+	exit 1
 }
 
 parse_args() {
@@ -78,12 +85,6 @@ execute() {
 	$command || msg "(exit status: $?)"
 }
 
-# TODO remove
-sgit() {
-	echo "[sgit] $@"
-}
-
-
 ### CHECKS AND ACTIONS #########################################################
 
 dirty_config_dirs() {
@@ -109,9 +110,9 @@ commit_config() {
 	for d in $(dirty_config_dirs); do
 		(
 			cd $d
-			sgit add --all .
+			run_git add --all .
 			# empty commit just prints a message
-			sgit commit -m "$title [autocommit]" && sgit tag "$slug"
+			run_git commit -m "$title [autocommit]" && run_git tag "$slug"
 		)
 	done
 }
