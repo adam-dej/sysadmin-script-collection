@@ -19,8 +19,11 @@ run_git() {
 # Techwiki location (for setup logs)
 techwiki_location="/root/techwiki"
 
-# Setup log location (for this particular server / jail)
-techwiki_setup_log="servers/inteligent/setup.md"
+# Setup log location in the techwiki (for this particular server / jail)
+techwiki_setup_log="/servers/inteligent/setup.md"
+
+# Line number in log to insert message to
+techwiki_log_line=3
 
 ### READ CONFIG -- DEAD NOW ####################################################
 
@@ -130,7 +133,8 @@ do_snapshot() {
 }
 
 log() {
-	msg "[log] $(date +%Y-%m-%d) $1: \`$3\` <$2>"
+	message="\n  * $(date +%Y-%m-%d) $1 <$2>\n    * \`$3\`\n"
+	sed -i -e "${techwiki_log_line} s/.*/${message}/" "${techwiki_location}${techwiki_setup_log}"
 }
 
 ### "PROPERLY" SEQUENCE ########################################################
@@ -150,3 +154,4 @@ msg '=== n-1) snapshot ========================================================'
 do_snapshot "post-$slug" || msg "Couldn't create snapshot (exit code $?)!"
 msg '=== n) log the change ===================================================='
 log "$title" "$slug" "$command"
+msg 'Done. Check setup log and commit it when you are done.'
