@@ -74,8 +74,7 @@ execute() {
 dirty_config_dirs() {
 	dirty=""
 	for dir in $etcundergit_dirs; do
-		( cd $dir && [ ! -z "$(git status --porcelain)" ] ) | grep -q "working directory clean" \
-			|| dirty="$dirty $dir"
+		( cd $dir && [ -z "$(git status --porcelain)" ] ) || dirty="$dirty $dir"
 	done
 	echo $dirty
 }
@@ -108,8 +107,17 @@ do_snapshot() {
 }
 
 log() {
-	message="\n  * $(date +%Y-%m-%d) $1 <$2>\n    * \`$3\`\n"
-	sed -i -e "${techwiki_log_line} s/.*/${message}/" "${techwiki_location}${techwiki_setup_log}"
+	logfile="${techwiki_location}${techwiki_setup_log}"
+	mv "${logfile}" "${logfile}.old"
+	head -n 2 < "${logfile}.old" > "${logfile}.tmp"
+	echo "" >> "${logfile}.tmp"
+	echo "  * $(date +%Y-%m-%d) $1 <$2>" >> "${logfile}.tmp"
+	echo "    * \`$3\`" >> "${logfile}.tmp"
+	echo "" >> "${logfile}.tmp"
+	tail -n +3 < "${logfile}.old" >> "${logfile}.tmp"
+	mv "${logfile}.tmp" "${logfile}"
+	rm "${logfile}.old"
+
 }
 
 ### "PROPERLY" SEQUENCE ########################################################
