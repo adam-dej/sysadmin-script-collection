@@ -139,7 +139,7 @@ log() {
 
 ### "PROPERLY" SEQUENCE ########################################################
 
-parse_args $@
+parse_args "$@"
 
 # Executing $command properly means:
 msg '=== 0) check if config directories (such as /etc) are clean =============='
