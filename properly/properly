@@ -1,7 +1,5 @@
 #!/bin/sh
 
-echo THIS SCRIPT IS A MESS AND NEEDS CLEANUP AND IS ONLY HERE IN HOPE THAT IT WILL BE FIXED. DO NOT USE THIS!!!
-
 ### READ CONFIG ################################################################
 
 CONFIG='/usr/local/etc/defaults/properly.conf'
