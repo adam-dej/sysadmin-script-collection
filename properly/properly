@@ -2,12 +2,9 @@
 
 ### READ CONFIG ################################################################
 
-CONFIG='/usr/local/etc/defaults/properly.conf'
+CONFIG='/usr/local/etc/properly.conf'
 # pull in config
 . $CONFIG
-for f in $local_config_files; do
-	. $f
-done
 
 ### ARGUMENTS PARSING ##########################################################
 
@@ -107,17 +104,8 @@ do_snapshot() {
 }
 
 log() {
-	logfile="${techwiki_location}${techwiki_setup_log}"
-	mv "${logfile}" "${logfile}.old"
-	head -n 2 < "${logfile}.old" > "${logfile}.tmp"
-	echo "" >> "${logfile}.tmp"
-	echo "  * $(date +%Y-%m-%d) $1 <$2>" >> "${logfile}.tmp"
-	echo "    * \`$3\`" >> "${logfile}.tmp"
-	echo "" >> "${logfile}.tmp"
-	tail -n +3 < "${logfile}.old" >> "${logfile}.tmp"
-	mv "${logfile}.tmp" "${logfile}"
-	rm "${logfile}.old"
-
+	# TODO this is a placeholder. Call real logger here.
+	# $1 is title, $2 is slug, $3 is the command that was used
 }
 
 ### "PROPERLY" SEQUENCE ########################################################
