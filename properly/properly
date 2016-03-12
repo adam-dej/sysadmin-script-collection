@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Execute command properly. For what does that mean, please read the last
+# section of this scirpt.
+
 ### READ CONFIG ################################################################
 
 CONFIG='/usr/local/etc/properly.conf'
@@ -14,6 +17,9 @@ usage() {
 }
 
 parse_args() {
+	# Parses arguments and removes properly-specific arguments from argument
+	# list, so that other arguments may be passed to command being
+	# properly executed
 	while getopts "s:t:" opt; do
 		case ${opt} in
 			t)
@@ -26,9 +32,15 @@ parse_args() {
 	done
 	shift $(( ${OPTIND} - 1 )) # TODO: odprasit
 	command="$@"
-	[ -z "$command" ] && usage
-	[ -z "$title" ] && title="$(to_title $command)"
-	[ -z "$slug" ] && slug="$(to_slug $title)"
+	[ -z "${command}" ] && usage
+	if [ -z "${title}" ]; then
+		title="$(to_title ${command})"
+		readonly title
+	fi
+	if [ -z "${slug}" ]; then
+		slug="$(to_slug ${title})"
+		readonly slug
+	fi
 }
 
 to_title() {
@@ -36,7 +48,7 @@ to_title() {
 }
 
 to_slug() {
-	echo $@ | tr ' /\t' '---'
+	echo "$@" | tr ' /\t' '---'
 }
 
 ### HELPER FUNCTIONS ###########################################################
@@ -47,7 +59,7 @@ STDOUT_COMPLAIN_PREFIX='!!!'
 complain() {
 	echo "${STDOUT_COMPLAIN_PREFIX} $@"
 	read -p "${STDOUT_COMPLAIN_PREFIX}     Type \"yes\" to continue (on your own responsibility): " REPLY
-	if [ x"$REPLY" != x'yes' ]; then
+	if [ x"${REPLY}" != x'yes' ]; then
 		msg 'Aborted.'
 		exit 47
 	fi
@@ -59,48 +71,51 @@ msg() {
 
 ask() {
 	read -p "${STDOUT_PREFIX}$@ [Y/n] " REPLY
-	[ x"$REPLY" = x -o x"$REPLY" = x"Y" -o x"$REPLY" = x"y" ]
+	[ x"${REPLY}" = x -o x"${REPLY}" = x"Y" -o x"${REPLY}" = x"y" ]
 }
 
 execute() {
-	$command || msg "(exit status: $?)"
+	${command} || msg "(exit status: $?)"
 }
 
 ### CHECKS AND ACTIONS #########################################################
 
 dirty_config_dirs() {
-	dirty=""
-	for dir in $etcundergit_dirs; do
-		( cd $dir && [ -z "$(git status --porcelain)" ] ) || dirty="$dirty $dir"
+	# Check whether config dirs which we keep under git are clean, so that
+	# autocommit won't mess things up.
+	local dirty=""
+	for dir in ${etcundergit_dirs}; do
+		( cd ${dir} && [ -z "$(git status --porcelain)" ] ) || dirty="${dirty} ${dir}"
 	done
-	echo $dirty
+	echo ${dirty}
 }
 
 check_config_clean() {
-	dirty_dirs="$(dirty_config_dirs)"
-	for d in $dirty_dirs; do
-		msg "$d is dirty"
+	# Check and inform user that config dirs are dirty.
+	local dirty_dirs="$(dirty_config_dirs)"
+	for d in ${dirty_dirs}; do
+		msg "${d} is dirty"
 	done
-	[ -z "$dirty_dirs" ]
+	[ -z "${dirty_dirs}" ]
 }
 
 commit_config() {
-	title="$1"
-	slug="$2"
+	local commit_message="$1"
+	local tag_name="$2"
 	for d in $(dirty_config_dirs); do
 		(
-			cd $d
+			cd ${d}
 			run_git add --all .
 			# empty commit just prints a message
-			run_git commit -m "$title [autocommit]" && run_git tag "$slug"
+			run_git commit -m "${commit_message} [autocommit]" && run_git tag "${tag_name}"
 		)
 	done
 }
 
 do_snapshot() {
 	snapshot="${snapshot_subvol}@${1}"
-	msg "creating snapshot: $snapshot"
-	zfs snapshot -r "$snapshot"
+	msg "creating snapshot: ${snapshot}"
+	zfs snapshot -r "${snapshot}"
 }
 
 log() {
@@ -110,19 +125,23 @@ log() {
 
 ### "PROPERLY" SEQUENCE ########################################################
 
-parse_args "$@"
+main() {
+	parse_args "$@"
 
-# Executing $command properly means:
-msg '=== 0) check if config directories (such as /etc) are clean =============='
-check_config_clean || complain 'Uncommitted config changes!'
-msg '=== 1) snapshot =========================================================='
-do_snapshot "pre-$slug" || complain "Cannot create snapshot (exit code $?)!"
-msg '=== execute command ======================================================'
-execute "$command"
-msg '=== n-2) commit config changes ==========================================='
-ask 'Autocommit config changes?' && commit_config "$title" "$slug"
-msg '=== n-1) snapshot ========================================================'
-do_snapshot "post-$slug" || msg "Couldn't create snapshot (exit code $?)!"
-msg '=== n) log the change ===================================================='
-log "$title" "$slug" "$command"
-msg 'Done. Check setup log and commit it when you are done.'
+	# Executing $command properly means:
+	msg '=== 0) check if config directories (such as /etc) are clean =============='
+	check_config_clean || complain 'Uncommitted config changes!'
+	msg '=== 1) snapshot =========================================================='
+	do_snapshot "pre-${slug}" || complain "Cannot create snapshot (exit code $?)!"
+	msg '=== execute command ======================================================'
+	execute "${command}"
+	msg '=== n-2) commit config changes ==========================================='
+	ask 'Autocommit config changes?' && commit_config "${title}" "${slug}"
+	msg '=== n-1) snapshot ========================================================'
+	do_snapshot "post-${slug}" || msg "Couldn't create snapshot (exit code $?)!"
+	msg '=== n) log the change ===================================================='
+	log "${title}" "${slug}" "${command}"
+	msg 'Done. Check setup log and commit it when you are done.'
+}
+
+main "$@"
