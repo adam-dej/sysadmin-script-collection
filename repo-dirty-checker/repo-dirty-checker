@@ -18,6 +18,17 @@ init_users_file() {
 	echo > "${1}"
 }
 
+print_warning() {
+	wall <<-END
+	Warning: uncommited changes detected in ${1}. Please clean up!
+	END
+}
+
+send_mail() {
+	# TODO(kuci): Implement mail sending
+	:
+}
+
 main() {
 	mkdir -p "${DATA_DIR}" || exit 1
 
@@ -44,9 +55,12 @@ main() {
 
 		if [ ! -z "$(git status --porcelain)" ]; then
 			run="$(cat "${run_file}")"
+			users="$(cat "${users_file}")"
 
 			if [ "${run}" -eq "0" ]; then
-				echo "$(who | cut -d ' ' -f 1 | sort -u)" > "${users_file}"
+				users="$(who | cut -d ' ' -f 1 | sort -u)"
+
+				echo "${users}" > "${users_file}"
 			fi
 
 			run="$(expr "${run}" + 1)"
@@ -57,9 +71,7 @@ main() {
 				runs_after="$(expr "${run}" - "${WALL_AFTER}")"
 
 				if [ "$(expr "${runs_after}" % "${WALL_PERIOD}")" -eq "0" ]; then
-					wall <<-END
-					Warning: uncommited changes detected in ${dir}. Please clean up!
-					END
+					print_warning "${dir}" "${users}"
 				fi
 			fi
 
@@ -67,8 +79,7 @@ main() {
 				runs_after="$(expr "${run}" - "${MAIL_AFTER}")"
 
 				if [ "$(expr "${runs_after}" % "${MAIL_PERIOD}")" -eq "0" ]; then
-					# Send mail
-					:
+					send_mail "${dir}" "${users}"
 				fi
 			fi
 		else
