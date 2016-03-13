@@ -7,6 +7,7 @@ CONFIG="/usr/local/etc/repo-dirty-checker.conf"
 
 DATA_DIR="/var/tmp/repo-dirty-checker"
 
+# ShellCheck directive, DO NOT REMOVE!
 # shellcheck source=repo-dirty-checker.conf
 . $CONFIG
 
