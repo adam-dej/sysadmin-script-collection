@@ -111,9 +111,8 @@ commit_config() {
 }
 
 do_snapshot() {
-	snapshot="${snapshot_subvol}@${1}"
 	msg "creating snapshot: ${snapshot}"
-	zfs snapshot -r "${snapshot}"
+	run_zfs_snapshot ${snapshot_subvol} ${1}
 }
 
 log() {
