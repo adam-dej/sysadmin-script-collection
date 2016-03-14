@@ -1,12 +1,11 @@
 #!/bin/sh
 
-# Execute command properly. For what does that mean, please read the last
+# Execute command properly. For what that means, please read the last
 # section of this scirpt.
 
 ### READ CONFIG ################################################################
 
 CONFIG='/usr/local/etc/properly.conf'
-# pull in config
 . $CONFIG
 
 ### ARGUMENTS PARSING ##########################################################
@@ -18,8 +17,7 @@ usage() {
 
 parse_args() {
 	# Parses arguments and removes properly-specific arguments from argument
-	# list, so that other arguments may be passed to command being
-	# properly executed
+	# list, so that other arguments may be passed to command being executed
 	while getopts "s:t:" opt; do
 		case ${opt} in
 			t)
@@ -81,8 +79,7 @@ execute() {
 ### CHECKS AND ACTIONS #########################################################
 
 dirty_config_dirs() {
-	# Check whether config dirs which we keep under git are clean, so that
-	# autocommit won't mess things up.
+	# Returns all config dirs with uncommitted changes, if any.
 	local dirty=""
 	for dir in ${etcundergit_dirs}; do
 		( cd ${dir} && [ -z "$(git status --porcelain)" ] ) || dirty="${dirty} ${dir}"
@@ -91,7 +88,8 @@ dirty_config_dirs() {
 }
 
 check_config_clean() {
-	# Check and inform user that config dirs are dirty.
+	# Check and inform user that config dirs are dirty o that autocommit won't
+	# mess things up
 	local dirty_dirs="$(dirty_config_dirs)"
 	for d in ${dirty_dirs}; do
 		msg "${d} is dirty"
@@ -125,9 +123,7 @@ log() {
 
 ### "PROPERLY" SEQUENCE ########################################################
 
-main() {
-	parse_args "$@"
-
+properly() {
 	# Executing $command properly means:
 	msg '=== 0) check if config directories (such as /etc) are clean =============='
 	check_config_clean || complain 'Uncommitted config changes!'
@@ -142,6 +138,13 @@ main() {
 	msg '=== n) log the change ===================================================='
 	log "${title}" "${slug}" "${command}"
 	msg 'Done. Check setup log and commit it when you are done.'
+}
+
+### MAIN #######################################################################
+
+main() {
+	parse_args "$@"
+	properly
 }
 
 main "$@"
