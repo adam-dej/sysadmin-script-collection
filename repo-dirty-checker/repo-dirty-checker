@@ -1,54 +1,94 @@
 #!/bin/sh
 #
-# Print a warning message using wall or send it via email if /etc contains
+# Print a warning message using wall or send it via email if watched directories under git contain
 # uncommited changes.
 
-BASE_DIR="/etc"
+CONFIG="/usr/local/etc/repo-dirty-checker.conf"
 
-DATA_DIR="/var/tmp/etc-dirty-checker"
+DATA_DIR="/var/tmp/repo-dirty-checker"
 
-RUN_FILE="${DATA_DIR}/run"
-USERS_FILE="${DATA_DIR}/users"
+# ShellCheck directive, DO NOT REMOVE!
+# shellcheck source=repo-dirty-checker.conf
+. $CONFIG
 
-WALL_AFTER=10
-MAIL_AFTER=45
+init_run_file() {
+	echo 0 > "${1}"
+}
 
-mkdir -p "${DATA_DIR}" || exit 1
+init_users_file() {
+	echo > "${1}"
+}
 
-if [ ! -f "${RUN_FILE}" ]; then
-  touch "${RUN_FILE}" || exit 1
-
-  echo 0 > "${RUN_FILE}"
-fi
-
-if [ ! -f "${USERS_FILE}" ]; then
-  touch "${USERS_FILE}" || exit 1
-fi
-
-cd "${BASE_DIR}"
-
-if [ ! -z "$(git status --porcelain)" ]; then
-  run="$(cat "${RUN_FILE}")"
-
-  if [ "${run}" -eq "0" ]; then
-    echo "$(who | cut -d ' ' -f 1 | sort -u)" > "${USERS_FILE}"
-  fi
-
-  run="$(expr "${run}" + 1)"
-
-  echo "${run}" > "${RUN_FILE}"
-
-  if [ "$(expr "${run}" % "${WALL_AFTER}")" -eq "0" ]; then
-    # DO NOT REMOVE THE TABS! We need them to make the here document working.
-    wall <<-END
-	Warning: uncommited changes detected in ${BASE_DIR}. Please clean up!
+print_warning() {
+	wall <<-END
+	Warning: uncommited changes detected in ${1}. Please clean up!
 	END
-  fi
+}
 
-  if [ "$(expr "${run}" % "${MAIL_AFTER}")" -eq "0" ]; then
-    # Send mail
-  fi
-else
-  echo 0 > "${RUN_FILE}"
-  echo -n > "${USERS_FILE}"
-fi
+send_mail() {
+	# TODO(kuci): Implement mail sending
+	:
+}
+
+main() {
+	mkdir -p "${DATA_DIR}" || exit 1
+
+	for dir in ${WATCHED_DIRS}; do
+		data_subdir="${DATA_DIR}${dir}"
+		run_file="${data_subdir}/run"
+		users_file="${data_subdir}/users"
+
+		mkdir -p "${data_subdir}" || exit 1
+
+		if [ ! -f "${run_file}" ]; then
+			touch "${run_file}" || exit 1
+
+			init_run_file "${run_file}"
+		fi
+
+		if [ ! -f "${users_file}" ]; then
+			touch "${users_file}" || exit 1
+
+			init_users_file "${users_file}"
+		fi
+
+		cd "${dir}" || exit 1
+
+		if [ ! -z "$(git status --porcelain)" ]; then
+			run="$(cat "${run_file}")"
+			users="$(cat "${users_file}")"
+
+			if [ "${run}" -eq "0" ]; then
+				users="$(who | cut -d ' ' -f 1 | sort -u)"
+
+				echo "${users}" > "${users_file}"
+			fi
+
+			run="$(expr "${run}" + 1)"
+
+			echo "${run}" > "${run_file}"
+
+			if [ "${run}" -ge "${WALL_AFTER}" ]; then
+				runs_after="$(expr "${run}" - "${WALL_AFTER}")"
+
+				if [ "$(expr "${runs_after}" % "${WALL_PERIOD}")" -eq "0" ]; then
+					print_warning "${dir}" "${users}"
+				fi
+			fi
+
+			if [ "${run}" -ge "${MAIL_AFTER}" ]; then
+				runs_after="$(expr "${run}" - "${MAIL_AFTER}")"
+
+				if [ "$(expr "${runs_after}" % "${MAIL_PERIOD}")" -eq "0" ]; then
+					send_mail "${dir}" "${users}"
+				fi
+			fi
+		else
+			init_run_file "${run_file}"
+
+			init_users_file "${users_file}"
+		fi
+	done
+}
+
+main "$@"
