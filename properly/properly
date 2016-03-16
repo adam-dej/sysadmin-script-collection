@@ -11,41 +11,41 @@ CONFIG='/usr/local/etc/properly.conf'
 ### ARGUMENTS PARSING ##########################################################
 
 usage() {
-	echo "Usage: $0 [-t title] [-s slug] command [arguments...]"
+	echo "Usage: $0 [-m message] [-t tag] command [arguments...]"
 	exit 1
 }
 
 parse_args() {
 	# Parses arguments and removes properly-specific arguments from argument
 	# list, so that other arguments may be passed to command being executed
-	while getopts "s:t:" opt; do
+	while getopts "m:t:" opt; do
 		case ${opt} in
 			t)
-				title=${OPTARG}
+				message=${OPTARG}
 				;;
 			s)
-				slug=${OPTARG}
+				tag=${OPTARG}
 				;;
 		esac
 	done
 	shift $(( ${OPTIND} - 1 )) # TODO: odprasit
 	command="$@"
 	[ -z "${command}" ] && usage
-	if [ -z "${title}" ]; then
-		title="$(to_title ${command})"
-		readonly title
+	if [ -z "${message}" ]; then
+		message="$(to_message ${command})"
+		readonly message
 	fi
-	if [ -z "${slug}" ]; then
-		slug="$(to_slug ${title})"
-		readonly slug
+	if [ -z "${tag}" ]; then
+		tag="$(to_tag ${message})"
+		readonly tag
 	fi
 }
 
-to_title() {
+to_message() {
 	date "+$* %Y/%m/%d"
 }
 
-to_slug() {
+to_tag() {
 	echo "$@" | tr ' /\t' '---'
 }
 
@@ -88,7 +88,7 @@ dirty_config_dirs() {
 }
 
 check_config_clean() {
-	# Check and inform user that config dirs are dirty o that autocommit won't
+	# Check and inform user that config dirs are dirty so that autocommit won't
 	# mess things up
 	local dirty_dirs="$(dirty_config_dirs)"
 	for d in ${dirty_dirs}; do
@@ -117,7 +117,7 @@ do_snapshot() {
 
 log() {
 	# TODO this is a placeholder. Call real logger here.
-	# $1 is title, $2 is slug, $3 is the command that was used
+	# $1 is message, $2 is tag, $3 is the command that was used
 }
 
 ### "PROPERLY" SEQUENCE ########################################################
@@ -127,15 +127,15 @@ properly() {
 	msg '=== 0) check if config directories (such as /etc) are clean =============='
 	check_config_clean || complain 'Uncommitted config changes!'
 	msg '=== 1) snapshot =========================================================='
-	do_snapshot "pre-${slug}" || complain "Cannot create snapshot (exit code $?)!"
+	do_snapshot "pre-${tag}" || complain "Cannot create snapshot (exit code $?)!"
 	msg '=== execute command ======================================================'
 	execute "${command}"
 	msg '=== n-2) commit config changes ==========================================='
-	ask 'Autocommit config changes?' && commit_config "${title}" "${slug}"
+	ask 'Autocommit config changes?' && commit_config "${message}" "${tag}"
 	msg '=== n-1) snapshot ========================================================'
-	do_snapshot "post-${slug}" || msg "Couldn't create snapshot (exit code $?)!"
+	do_snapshot "post-${tag}" || msg "Couldn't create snapshot (exit code $?)!"
 	msg '=== n) log the change ===================================================='
-	log "${title}" "${slug}" "${command}"
+	log "${message}" "${tag}" "${command}"
 	msg 'Done. Check setup log and commit it when you are done.'
 }
 
