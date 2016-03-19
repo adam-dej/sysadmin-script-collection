@@ -6,19 +6,19 @@ A collection of scripts that simplify maintainance of our servers:
 
 ### Shell scripts
 
-Primary target for these scripts is a system running FreeBSD. We are adhering to [Google Style Guide](https://google.github.io/styleguide/shell.xml) with those exceptions:
-  - We are not using `bash` for our scripts. Our goal is that those scripts will run on any POSIX compatible shell, which `bash` is not.
+Primary target for these scripts is a system running FreeBSD. We adhere to Google [Style Guide](https://google.github.io/styleguide/shell.xml) with these exceptions:
+  - We don't use `bash` for our scripts. Our goal is that those scripts will run on any POSIX compatible shell (notably `sh`), which `bash` is not.
   - Local variables therefore cannot use keyword `local`.
-  - We are indenting using one tab `\t`.
+  - Indentation should be one tab `\t` (consistency with heredoc, compatibility with Makefile…).
   - Maximum line length should be 100 characters, but is not enforced.
 
 It is also recommended to check those scripts with [shellcheck](http://www.shellcheck.net/).
 
 ### Python scripts
 
-We are fully adhering to [PEP-8](https://www.python.org/dev/peps/pep-0008/), except the maximum line length, which should be 100.
+We fully adhere to [PEP-8](https://www.python.org/dev/peps/pep-0008/), except the maximum line length, which should be 100.
 
-Where possible, we are preferring Python 3.
+We prefer Python 3 where possible.
   
 ## Scripts
 
