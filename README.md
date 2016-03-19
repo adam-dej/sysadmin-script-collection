@@ -2,17 +2,17 @@
 
 A collection of scripts that simplify maintainance of our servers:
 
-## Styleguide
+## Style guide
 
 ### Shell scripts
 
-Primary target for these scripts is a system running FreeBSD. We adhere to Google [Style Guide](https://google.github.io/styleguide/shell.xml) with these exceptions:
+Primary target for these scripts is a system running FreeBSD. We adhere to [Google Style Guide](https://google.github.io/styleguide/shell.xml) with the following exceptions:
   - We don't use `bash` for our scripts. Our goal is that those scripts will run on any POSIX compatible shell (notably `sh`), which `bash` is not.
-  - Local variables therefore cannot use keyword `local`.
+  - Local variables therefore cannot use keyword `local` (although readonly variables should use `readonly`).
   - Indentation should be one tab `\t` (consistency with heredoc, compatibility with Makefile…).
   - Maximum line length should be 100 characters, but is not enforced.
 
-It is also recommended to check those scripts with [shellcheck](http://www.shellcheck.net/).
+It is also recommended to check the scripts with [ShellCheck](http://www.shellcheck.net/).
 
 ### Python scripts
 
