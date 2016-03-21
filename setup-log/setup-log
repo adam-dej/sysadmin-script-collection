@@ -1,0 +1,110 @@
+#!/usr/bin/python3
+
+import sys
+import datetime
+
+DEFAULT_CONFIG_FILE_PATH = '/usr/local/etc/trojsten-log.conf'
+DEFAULT_LOG_MARKER = '<!-- begin setup log -->'
+
+def warning():
+	print("Warning: last topic date different from current system date, consider adding new topic", file=sys.stderr)
+
+def error():
+	exit("usage: setup-log [--config config] [-l logfile] [-t new_title [-d date]] \
+[-c used_command] message")
+
+def find_marker(marker, lines):
+	for i in range(len(lines)):
+		if marker in lines[i]:
+			return i
+
+argv_index = 1
+try:
+
+	if sys.argv[argv_index] == '--config':
+		config_file_path = sys.argv[argv_index + 1]
+		argv_index += 2
+	else:
+		config_file_path = DEFAULT_CONFIG_FILE_PATH
+
+	marker = DEFAULT_LOG_MARKER
+	if sys.argv[argv_index] == '-l':
+		log_file_path = sys.argv[argv_index + 1]
+		argv_index += 2
+		with open(config_file_path) as cfg:
+			for line in cfg:
+				line = line.strip().split('=')
+				if line[0] == 'log_marker':
+					marker = line[1]
+					break
+	else:
+		with open(config_file_path) as cfg:
+			for line in cfg:
+				line = line.strip().split('=')
+				if line[0] == 'setup_log_path':
+					log_file_path = line[1]
+				elif line[0] == 'log_marker':
+					marker = line[1]
+
+	if sys.argv[argv_index] == '-t':
+		new_title = sys.argv[argv_index + 1]
+		argv_index += 2
+		if sys.argv[argv_index] == '-d':
+			date = sys.argv[argv_index + 1]
+			argv_index += 2
+		else:
+			date = str(datetime.date.today())
+	else:
+		new_title = None
+		date = None
+
+	if sys.argv[argv_index] == '-c':
+		command = sys.argv[argv_index + 1]
+		sys.argv += 2
+	else:
+		command = None
+
+	message = ' '.join(sys.argv[argv_index:])
+
+except IndexError:
+		error()
+
+lines = open(log_file_path).readlines()
+
+if new_title is not None:
+	new_topic = ["\n"]
+
+	line = "{} ({})\n".format(new_title, date))
+	new_topic.append(line)
+	new_topic.append("-" * (len(line)-1) + "\n")
+	new_topic.append("\n")
+
+	new_topic.append("  * {}\n".format(message))
+	if command is not None:
+		new_topic.append("    * `{}`\n".format(command))
+
+	i = find_marker(marker, lines)
+
+	lines[i+1:i+1] = new_topic
+
+else:
+	i = find_marker(marker, lines)
+
+	i += 2
+	last_date = lines[i][lines[i].index('(')+1:-2]
+	if str(datetime.date.today()) != last_date:
+		warning()
+
+	i += 2
+	while lines[i] != "\n":
+		i += 1
+
+	new_message = ["  * {}".format(message)]
+	if command is not None:
+		new_message.append("    * `{}`".format(command))
+
+	lines[i:i] = new_message
+
+with open(log_file_path, 'w') as out_log:
+	out_log.writelines(lines)
+
