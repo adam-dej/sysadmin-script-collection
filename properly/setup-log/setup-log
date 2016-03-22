@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+
+import sys
+import datetime
+import argparse
+
+DEFAULT_CONFIG_FILE_PATH = '/usr/local/etc/trojsten-log.conf'
+DEFAULT_LOG_MARKER = '<!-- begin setup log -->'
+
+
+def warning():
+    print("Warning: last topic date different from current system date, consider adding new topic",
+          file=sys.stderr)
+
+
+def find_marker(marker, line_list):
+    for i in range(len(line_list)):
+        if marker in line_list[i]:
+            return i
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Write a record about using a command into a .md\
+log-file")
+
+    parser.add_argument('--config', default=DEFAULT_CONFIG_FILE_PATH, dest='config',
+                        help="specify config file path, defaults to %(default)s")
+
+    parser.add_argument('-l', metavar="LOG_FILE", dest='log_file',
+                        type=argparse.FileType('r+', encoding='UTF-8'),
+                        help="override log file path specified in CONFIG")
+
+    parser.add_argument('-t', metavar="NEW_TITLE", dest='new_title',
+                        help="add new title with current date")
+
+    parser.add_argument('-d', metavar="YYYY-MM-DD", dest='date',
+                        type=lambda x: datetime.datetime.strptime(x, '%Y-%m-%d').date(),
+                        help="override current date when adding new title. This option is ignored \
+if '-t' is not present")
+
+    parser.add_argument('-c', metavar="COMMAND", dest='command',
+                        help="add a command as a sub-bullet")
+
+    parser.add_argument('message', metavar="MESSAGE", type=str, nargs='+',
+                        help="message to be added to the logfile")
+
+    args = parser.parse_args()
+
+    if args.date is None:
+        args.date = str(datetime.date.today())
+
+    args.message = ' '.join(args.message)
+
+    args.marker = None
+    with open(args.config) as cfg:
+        for line in cfg:
+            line = line.strip().split('=')
+            if line[0] == 'log_marker':
+                args.marker = line[1]
+            elif line[0] == 'setup_log_path' and args.log_file is None:
+                args.log_file = open(line[1])
+    if args.marker is None:
+        args.marker = DEFAULT_LOG_MARKER
+
+    lines = args.log_file.readlines()
+    args.log_file.close()
+
+    if args.new_title is not None:
+        new_topic = ["\n"]
+
+        line = "{} ({})\n".format(args.new_title, args.date)
+        new_topic.append(line)
+        new_topic.append("-" * (len(line)-1) + "\n")
+        new_topic.append("\n")
+
+        new_topic.append("  * {}\n".format(args.message))
+        if args.command is not None:
+            new_topic.append("    * `{}`\n".format(args.command))
+
+        index = find_marker(args.marker, lines)
+
+        lines[index+1:index+1] = new_topic
+
+    else:
+        index = find_marker(args.marker, lines)
+
+        index += 2
+        last_date = lines[index][lines[index].index('(')+1:-2]
+        if str(datetime.date.today()) != last_date:
+            warning()
+
+        index += 3
+        while lines[index] != "\n":
+            index += 1
+
+        new_message = ["  * {}\n".format(args.message)]
+        if args.command is not None:
+            new_message.append("    * `{}`\n".format(args.command))
+
+        lines[index:index] = new_message
+
+    with open(args.log_file.name, 'w') as out_log:
+        out_log.writelines(lines)
