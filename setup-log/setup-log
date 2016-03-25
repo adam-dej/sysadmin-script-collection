@@ -3,23 +3,22 @@
 import sys
 import datetime
 import argparse
+import re
 
 DEFAULT_CONFIG_FILE_PATH = '/usr/local/etc/trojsten-log.conf'
 DEFAULT_LOG_MARKER = '<!-- begin setup log -->'
 
-
-def warning():
-    print("Warning: last topic date different from current system date, consider adding new topic",
-          file=sys.stderr)
+config = {}
 
 
-def find_marker(marker, line_list):
+def find_marker(line_list):
     for i, line in enumerate(line_list):
-        if marker in line:
+        if config['log_marker'] in line:
             return i
     raise RuntimeError('Log marker not found in the setup log!')
 
-if __name__ == '__main__':
+
+def process_args():
 
     parser = argparse.ArgumentParser(description="Write a record about using a command into a " +
                                                  ".md log-file")
@@ -37,6 +36,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-d', metavar="YYYY-MM-DD", dest='date',
                         type=lambda x: datetime.datetime.strptime(x, '%Y-%m-%d').date(),
+                        default=str(datetime.date.today()),
                         help="override current date when adding new title. This option is " +
                              "ignored if '-t' is not present")
 
@@ -48,70 +48,109 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if args.date is None:
-        args.date = str(datetime.date.today())
-
+    # We are too lazy to put the message in quotes, so it comes in as a bunch of args. Join them.
     args.message = ' '.join(args.message)
 
+    # If config file was not supplied, open the default one
     if not args.config:
         args.config = open(DEFAULT_CONFIG_FILE_PATH)
 
-    args.marker = None
-    for line in args.config:
+    return args
+
+
+def read_config(config_file):
+    global config
+
+    config = {
+        'log_marker': DEFAULT_LOG_MARKER,
+        'setup_log_path': None
+    }
+
+    for line in config_file:
         line = line.strip().split('=')
-        if line[0] == 'log_marker':
-            args.marker = line[1]
-        elif line[0] == 'setup_log_path' and args.log_file is None:
-            args.log_file = open(line[1])
+        if line[0] in ['log_marker', 'setup_log_path']:
+            config[line[0]] = line[1]
 
-    if not args.log_file:
-        raise RuntimeError("Config lacks `setup_log_path` option: don't know where to write!")
 
-    if args.marker is None:
-        args.marker = DEFAULT_LOG_MARKER
+def add_new_topic(log_lines, title, date):
+    topic_heading = "{} ({})".format(title, date)
+    topic_underline = "-"*len(topic_heading)
 
-    lines = args.log_file.readlines()
-    args.log_file.close()
+    setup_log_start = find_marker(log_lines)
+    log_lines[setup_log_start+1:setup_log_start+1] = ["", topic_heading, topic_underline, ""]
 
-    if args.new_title is not None:
-        new_topic = ["\n"]
 
-        line = "{} ({})\n".format(args.new_title, args.date)
-        new_topic.append(line)
-        new_topic.append("-" * (len(line)-1) + "\n")
-        new_topic.append("\n")
+def add_new_message(log_lines, message, command):
+    new_message_line = find_marker(log_lines)
 
-        new_topic.append("  * {}\n".format(args.message))
-        if args.command is not None:
-            new_topic.append("    * `{}`\n".format(args.command))
+    while new_message_line+1 < len(log_lines):
+        title_match = re.match(".*\(([0-9-]*)\)", log_lines[new_message_line])
 
-        index = find_marker(args.marker, lines)
+        # Have we found correct title with date and is it a markdown heading?
+        if title_match and log_lines[new_message_line+1].startswith("---"):
+            # Header underlining + mandatory newline after a markdown heading
+            new_message_line += 2
+            break
 
-        # TODO check whether log has a proper format (correct number of newlines)
-        lines[index+1:index+1] = new_topic
-
+        new_message_line += 1
     else:
-        index = find_marker(args.marker, lines)
+        raise RuntimeError('Unable to find any existing topic. Add one.')
 
-        # TODO check whether log has a proper format (correct number of newlines)
-        # It would be better to dynamically find nearest title to the log marker.
-        index += 2
-        # This assumes that the title has parentheses only around the date.
-        # TODO fix that
-        last_date = lines[index][lines[index].index('(')+1:-2]
-        if str(datetime.date.today()) != last_date:
-            warning()
+    last_date = title_match.group(1)
+    if str(datetime.date.today()) != last_date:
+        print("Warning: last topic date different from current system date, " +
+              "consider adding new topic", file=sys.stderr)
 
-        index += 3
-        while lines[index] != "\n":
-            index += 1
+    new_message = ["  * {}".format(message)]
+    if command is not None:
+        new_message.append("    * `{}`".format(command))
 
-        new_message = ["  * {}\n".format(args.message)]
-        if args.command is not None:
-            new_message.append("    * `{}`\n".format(args.command))
+    # This is where the first message should be.
+    new_message_line += 1
 
-        lines[index:index] = new_message
+    if log_lines[new_message_line].startswith('  *'):
+        # Indeed, the first message is here. Find line after last message in the first topic
+        while new_message_line < len(log_lines) and log_lines[new_message_line] != "":
+            new_message_line += 1
+    else:
+        # Something else is here. Maybe another topic heading? We should put this message before it.
+        new_message_line -= 1
+        # But we should preserve the empty line
+        new_message.insert(0, "")
 
-    # TODO write to a temp file, THEN move it to `args.log_file.name`
-    with open(args.log_file.name, 'w') as out_log:
-        out_log.writelines(lines)
+    log_lines[new_message_line:new_message_line] = new_message
+
+
+def write_log(log_lines):
+    # TODO write this somewhere else, then overwrite the real log file
+    with open(config['setup_log_path'], 'w') as out_log:
+        out_log.writelines((x + "\n") for x in log_lines)
+
+
+def main():
+    global config
+
+    args = process_args()
+    read_config(args.config)
+
+    # Log file location from args can override that in the config
+    if args.log_file:
+        config['log_file'] = args.log_file
+    else:
+        if not config['setup_log_path']:
+            raise RuntimeError("Config lacks `setup_log_path` option: don't know where to write!")
+        config['log_file'] = open(config['setup_log_path'])
+
+    log_lines = list(x.rstrip() for x in config['log_file'].readlines())
+    config['log_file'].close()
+
+    if args.new_title:
+        add_new_topic(log_lines, args.new_title, args.date)
+    add_new_message(log_lines, args.message, args.command)
+
+    write_log(log_lines)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
