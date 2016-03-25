@@ -14,13 +14,14 @@ def warning():
 
 
 def find_marker(marker, line_list):
-    for i in range(len(line_list)):
-        if marker in line_list[i]:
+    for i, line in enumerate(line_list):
+        if marker in line:
             return i
+    raise RuntimeError('Log marker not found in the setup log!')
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Write a record about using a command into a .md\
-log-file")
+    parser = argparse.ArgumentParser(description="Write a record about using a command into a " +
+                                                 ".md log-file")
 
     parser.add_argument('--config', default=DEFAULT_CONFIG_FILE_PATH, dest='config',
                         help="specify config file path, defaults to %(default)s")
@@ -34,8 +35,8 @@ log-file")
 
     parser.add_argument('-d', metavar="YYYY-MM-DD", dest='date',
                         type=lambda x: datetime.datetime.strptime(x, '%Y-%m-%d').date(),
-                        help="override current date when adding new title. This option is ignored \
-if '-t' is not present")
+                        help="override current date when adding new title. This option is " +
+                             "ignored if '-t' is not present")
 
     parser.add_argument('-c', metavar="COMMAND", dest='command',
                         help="add a command as a sub-bullet")
@@ -78,12 +79,17 @@ if '-t' is not present")
 
         index = find_marker(args.marker, lines)
 
+        # TODO check whether log has a proper format (correct number of newlines)
         lines[index+1:index+1] = new_topic
 
     else:
         index = find_marker(args.marker, lines)
 
+        # TODO check whether log has a proper format (correct number of newlines)
+        # It would be better to dynamically find nearest title to the log marker.
         index += 2
+        # This assumes that the title has parentheses only around the date.
+        # TODO fix that
         last_date = lines[index][lines[index].index('(')+1:-2]
         if str(datetime.date.today()) != last_date:
             warning()
@@ -98,5 +104,6 @@ if '-t' is not present")
 
         lines[index:index] = new_message
 
+    # TODO write to a temp file, THEN move it to `args.log_file.name`
     with open(args.log_file.name, 'w') as out_log:
         out_log.writelines(lines)
