@@ -6,7 +6,7 @@ import subprocess
 
 
 class Shell(cmd.Cmd):
-    intro = 'This shell allows you to run the `zfs` command. Read its man page.'
+    intro = 'This shell allows you to run the `zfs` command. See zfs(8)'
     prompt = 'zfs-manage-shell$ '
 
     def do_zfs(self, arg):
@@ -24,7 +24,7 @@ class Shell(cmd.Cmd):
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-c', '--command',
-                    help='Command to be executed, starts interactive shell if ommited')
+                    help='Command to be executed. Omit to start interactive shell.')
 
 args = parser.parse_args()
 
