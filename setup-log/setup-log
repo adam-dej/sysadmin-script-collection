@@ -4,6 +4,7 @@ import sys
 import datetime
 import argparse
 import re
+import os
 
 DEFAULT_CONFIG_FILE_PATH = '/usr/local/etc/trojsten-log.conf'
 DEFAULT_LOG_MARKER = '<!-- begin setup log -->'
@@ -122,9 +123,13 @@ def add_new_message(log_lines, message, command):
 
 
 def write_log(log_lines):
-    # TODO write this somewhere else, then overwrite the real log file
-    with open(config['setup_log_path'], 'w') as out_log:
+    temp_file = config['setup_log_path'] + ".tmp"
+    with open(temp_file, 'w') as out_log:
         out_log.writelines((x + "\n") for x in log_lines)
+
+    # Rename temp file to the real file name, thus overwriting the old file.
+    # This is an atomic operation (POSIX requirement)
+    os.rename(temp_file, config['setup_log_path'])
 
 
 def main():
