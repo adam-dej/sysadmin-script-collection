@@ -20,10 +20,12 @@ def find_marker(marker, line_list):
     raise RuntimeError('Log marker not found in the setup log!')
 
 if __name__ == '__main__':
+
     parser = argparse.ArgumentParser(description="Write a record about using a command into a " +
                                                  ".md log-file")
 
-    parser.add_argument('--config', default=DEFAULT_CONFIG_FILE_PATH, dest='config',
+    parser.add_argument('--config', metavar="CONFIG_FILE", dest='config',
+                        type=argparse.FileType('r+', encoding='UTF-8'),
                         help="specify config file path, defaults to %(default)s")
 
     parser.add_argument('-l', metavar="LOG_FILE", dest='log_file',
@@ -51,14 +53,20 @@ if __name__ == '__main__':
 
     args.message = ' '.join(args.message)
 
+    if not args.config:
+        args.config = open(DEFAULT_CONFIG_FILE_PATH)
+
     args.marker = None
-    with open(args.config) as cfg:
-        for line in cfg:
-            line = line.strip().split('=')
-            if line[0] == 'log_marker':
-                args.marker = line[1]
-            elif line[0] == 'setup_log_path' and args.log_file is None:
-                args.log_file = open(line[1])
+    for line in args.config:
+        line = line.strip().split('=')
+        if line[0] == 'log_marker':
+            args.marker = line[1]
+        elif line[0] == 'setup_log_path' and args.log_file is None:
+            args.log_file = open(line[1])
+
+    if not args.log_file:
+        raise RuntimeError("Config lacks `setup_log_path` option: don't know where to write!")
+
     if args.marker is None:
         args.marker = DEFAULT_LOG_MARKER
 
