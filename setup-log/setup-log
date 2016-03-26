@@ -5,6 +5,7 @@ import datetime
 import argparse
 import re
 import os
+import subprocess
 
 DEFAULT_CONFIG_FILE_PATH = '/usr/local/etc/setup-log.conf'
 DEFAULT_LOG_MARKER = '<!-- begin setup log -->'
@@ -160,7 +161,7 @@ def main():
     write_log(config['setup_log_path'], log_lines)
 
     if args.edit:
-        os.system('%s %s' % (os.getenv('EDITOR'), config['setup_log_path']))
+        subprocess.call([os.getenv('EDITOR'), config['setup_log_path']])
 
     return 0
 
