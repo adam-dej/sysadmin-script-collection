@@ -112,7 +112,7 @@ def add_new_message(log_marker, log_lines, message, command):
     # This is where the first message should be.
     new_message_line += 1
 
-    if log_lines[new_message_line].startswith('  *'):
+    if new_message_line < len(log_lines) and log_lines[new_message_line].startswith('  *'):
         # Indeed, the first message is here. Find line after last message in the first topic
         while new_message_line < len(log_lines) and log_lines[new_message_line] != "":
             new_message_line += 1
