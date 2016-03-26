@@ -131,8 +131,6 @@ def write_log(setup_log_path, log_lines):
 
 
 def main():
-    global config
-
     args = process_args()
     config = read_config(args.config)
 
