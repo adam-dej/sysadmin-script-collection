@@ -116,8 +116,8 @@ do_snapshot() {
 }
 
 log() {
-	# TODO this is a placeholder. Call real logger here.
 	# $1 is message, $2 is tag, $3 is the command that was used
+	setup-log -c "$3" "$1 [$2]"
 }
 
 ### "PROPERLY" SEQUENCE ########################################################
