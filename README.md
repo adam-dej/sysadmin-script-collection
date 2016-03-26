@@ -19,7 +19,7 @@ It is also recommended to check the scripts with [ShellCheck](http://www.shellch
 We fully adhere to [PEP-8](https://www.python.org/dev/peps/pep-0008/), except the maximum line length, which should be 100.
 
 We prefer Python 3 where possible.
-  
+
 ## Scripts
 
 ### `properly`
@@ -41,3 +41,7 @@ Periodically checks whether someone has left a mess behind in `/etc` under git.
 ### `zfs-snapmanage-shell`
 
 Limited login shell which allows management of zfs snapshots only. Optionally it can limit operation only to datasets specific to a given jail.
+
+### `setup-log`
+
+Automates adding messages to our setup logs.

@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+
+import sys
+import datetime
+import argparse
+import re
+import os
+import subprocess
+
+DEFAULT_CONFIG_FILE_PATH = '/usr/local/etc/setup-log.conf'
+DEFAULT_LOG_MARKER = '<!-- begin setup log -->'
+
+DATE_FORMAT = '%Y-%m-%d'
+
+
+def parse_date(date_string):
+    return datetime.datetime.strptime(date_string, DATE_FORMAT).date()
+
+
+def find_marker(log_marker, line_list):
+    for i, line in enumerate(line_list):
+        if log_marker in line:
+            return i
+    raise RuntimeError('Log marker not found in the setup log!')
+
+
+def process_args():
+
+    parser = argparse.ArgumentParser(description="Write a record about using a command into a " +
+                                                 ".md log-file")
+
+    parser.add_argument('--config', metavar="CONFIG_FILE", dest='config',
+                        type=argparse.FileType('r+', encoding='UTF-8'),
+                        help="specify config file path, defaults to %(default)s")
+
+    parser.add_argument('-l', metavar="LOG_FILE", dest='log_file',
+                        type=argparse.FileType('r+', encoding='UTF-8'),
+                        help="override log file path specified in CONFIG")
+
+    parser.add_argument('-t', metavar="NEW_TITLE", dest='new_title',
+                        help="add new title with current date")
+
+    parser.add_argument('-d', metavar="YYYY-MM-DD", dest='date',
+                        type=parse_date,
+                        default=datetime.date.today(),
+                        help="override current date when adding new title. This option is " +
+                             "ignored if '-t' is not present")
+
+    parser.add_argument('-c', metavar="COMMAND", dest='command',
+                        help="add a command as a sub-bullet")
+
+    parser.add_argument('-e', action='store_true', dest='edit',
+                        help='opens logfile in a default editor')
+
+    parser.add_argument('message', metavar="MESSAGE", type=str, nargs='+',
+                        help="message to be added to the logfile")
+
+    args = parser.parse_args()
+
+    # We are too lazy to put the message in quotes, so it comes in as a bunch of args. Join them.
+    args.message = ' '.join(args.message)
+
+    # If config file was not supplied, open the default one
+    if not args.config:
+        args.config = open(DEFAULT_CONFIG_FILE_PATH)
+
+    return args
+
+
+def read_config(config_file):
+    config = {
+        'log_marker': DEFAULT_LOG_MARKER,
+        'setup_log_path': None
+    }
+
+    for line in config_file:
+        line = line.strip().split('=', 1)
+        if line[0] in config.keys():
+            config[line[0]] = line[1].strip('"')
+
+    return config
+
+
+def add_new_topic(log_marker, log_lines, title, date):
+    topic_heading = "{} ({})".format(title, date.strftime(DATE_FORMAT))
+    topic_underline = "-" * len(topic_heading)
+
+    setup_log_start = find_marker(log_marker, log_lines)
+    log_lines[setup_log_start + 1:setup_log_start + 1] = ["", topic_heading, topic_underline, ""]
+
+
+def add_new_message(log_marker, log_lines, message, command):
+    new_message_line = find_marker(log_marker, log_lines)
+
+    while new_message_line + 1 < len(log_lines):
+        title_match = re.match(".*\(([0-9-]*)\)", log_lines[new_message_line])
+
+        # Have we found correct title with date and is it a markdown heading?
+        if title_match and log_lines[new_message_line + 1].startswith("---"):
+            # Header underlining + mandatory newline after a markdown heading
+            new_message_line += 2
+            break
+
+        new_message_line += 1
+    else:
+        raise RuntimeError('Unable to find any existing topic. Add one.')
+
+    if title_match and datetime.date.today() != parse_date(title_match.group(1)):
+        print("Warning: last topic date different from current system date, " +
+              "consider adding new topic", file=sys.stderr)
+
+    new_message = ["  * {}".format(message)]
+    if command is not None:
+        new_message.append("    * `{}`".format(command))
+
+    # This is where the first message should be.
+    new_message_line += 1
+
+    if new_message_line < len(log_lines) and log_lines[new_message_line].startswith('  *'):
+        # Indeed, the first message is here. Find line after last message in the first topic
+        while new_message_line < len(log_lines) and log_lines[new_message_line] != "":
+            new_message_line += 1
+    else:
+        # Something else is here. Maybe another topic heading? We should put this message before it.
+        new_message_line -= 1
+        # But we should preserve the empty line
+        new_message.insert(0, "")
+
+    log_lines[new_message_line:new_message_line] = new_message
+
+
+def write_log(setup_log_path, log_lines):
+    temp_file = setup_log_path + ".tmp"
+    with open(temp_file, 'w') as out_log:
+        out_log.writelines((x + "\n") for x in log_lines)
+
+    # Rename temp file to the real file name, thus overwriting the old file.
+    # This is an atomic operation (POSIX requirement)
+    os.rename(temp_file, setup_log_path)
+
+
+def main():
+    args = process_args()
+    config = read_config(args.config)
+
+    # Log file location from args can override that in the config
+    if args.log_file:
+        config['log_file'] = args.log_file
+    else:
+        if not config['setup_log_path']:
+            raise RuntimeError("Config lacks `setup_log_path` option: don't know where to write!")
+        config['log_file'] = open(config['setup_log_path'])
+
+    log_lines = list(x.rstrip() for x in config['log_file'].readlines())
+    config['log_file'].close()
+
+    if args.new_title:
+        add_new_topic(config['log_marker'], log_lines, args.new_title, args.date)
+    add_new_message(config['log_marker'], log_lines, args.message, args.command)
+
+    write_log(config['setup_log_path'], log_lines)
+
+    if args.edit:
+        subprocess.call([os.getenv('EDITOR'), config['setup_log_path']])
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
