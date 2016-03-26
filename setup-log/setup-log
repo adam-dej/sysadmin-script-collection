@@ -6,7 +6,7 @@ import argparse
 import re
 import os
 
-DEFAULT_CONFIG_FILE_PATH = '/usr/local/etc/trojsten-log.conf'
+DEFAULT_CONFIG_FILE_PATH = '/usr/local/etc/setup-log.conf'
 DEFAULT_LOG_MARKER = '<!-- begin setup log -->'
 
 config = {}
