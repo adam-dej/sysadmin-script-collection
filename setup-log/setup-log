@@ -48,6 +48,9 @@ def process_args():
     parser.add_argument('-c', metavar="COMMAND", dest='command',
                         help="add a command as a sub-bullet")
 
+    parser.add_argument('-e', action='store_true', dest='edit',
+                        help='opens logfile in a default editor')
+
     parser.add_argument('message', metavar="MESSAGE", type=str, nargs='+',
                         help="message to be added to the logfile")
 
@@ -155,6 +158,10 @@ def main():
     add_new_message(config['log_marker'], log_lines, args.message, args.command)
 
     write_log(config['setup_log_path'], log_lines)
+
+    if args.edit:
+        os.system('%s %s' % (os.getenv('EDITOR'), config['setup_log_path']))
+
     return 0
 
 
