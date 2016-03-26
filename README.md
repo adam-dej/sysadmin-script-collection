@@ -44,4 +44,4 @@ Limited login shell which allows management of zfs snapshots only. Optionally it
 
 ### `setup-log`
 
-Facilitates automated scripted insertions of messages to our setup logs.
+Automates adding messages to our setup logs.
