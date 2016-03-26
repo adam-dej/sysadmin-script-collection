@@ -75,20 +75,20 @@ def read_config(config_file):
 
 def add_new_topic(log_lines, title, date):
     topic_heading = "{} ({})".format(title, date)
-    topic_underline = "-"*len(topic_heading)
+    topic_underline = "-" * len(topic_heading)
 
     setup_log_start = find_marker(log_lines)
-    log_lines[setup_log_start+1:setup_log_start+1] = ["", topic_heading, topic_underline, ""]
+    log_lines[setup_log_start + 1:setup_log_start + 1] = ["", topic_heading, topic_underline, ""]
 
 
 def add_new_message(log_lines, message, command):
     new_message_line = find_marker(log_lines)
 
-    while new_message_line+1 < len(log_lines):
+    while new_message_line + 1 < len(log_lines):
         title_match = re.match(".*\(([0-9-]*)\)", log_lines[new_message_line])
 
         # Have we found correct title with date and is it a markdown heading?
-        if title_match and log_lines[new_message_line+1].startswith("---"):
+        if title_match and log_lines[new_message_line + 1].startswith("---"):
             # Header underlining + mandatory newline after a markdown heading
             new_message_line += 2
             break
