@@ -9,6 +9,12 @@ import os
 DEFAULT_CONFIG_FILE_PATH = '/usr/local/etc/setup-log.conf'
 DEFAULT_LOG_MARKER = '<!-- begin setup log -->'
 
+DATE_FORMAT = '%Y-%m-%d'
+
+
+def parse_date(date_string):
+    return datetime.datetime.strptime(date_string, DATE_FORMAT).date()
+
 
 def find_marker(log_marker, line_list):
     for i, line in enumerate(line_list):
@@ -34,8 +40,8 @@ def process_args():
                         help="add new title with current date")
 
     parser.add_argument('-d', metavar="YYYY-MM-DD", dest='date',
-                        type=lambda x: datetime.datetime.strptime(x, '%Y-%m-%d').date(),
-                        default=str(datetime.date.today()),
+                        type=parse_date,
+                        default=datetime.date.today(),
                         help="override current date when adding new title. This option is " +
                              "ignored if '-t' is not present")
 
@@ -72,7 +78,7 @@ def read_config(config_file):
 
 
 def add_new_topic(log_marker, log_lines, title, date):
-    topic_heading = "{} ({})".format(title, date)
+    topic_heading = "{} ({})".format(title, date.strftime(DATE_FORMAT))
     topic_underline = "-" * len(topic_heading)
 
     setup_log_start = find_marker(log_marker, log_lines)
@@ -95,8 +101,7 @@ def add_new_message(log_marker, log_lines, message, command):
     else:
         raise RuntimeError('Unable to find any existing topic. Add one.')
 
-    last_date = title_match.group(1)
-    if str(datetime.date.today()) != last_date:
+    if title_match and datetime.date.today() != parse_date(title_match.group(1)):
         print("Warning: last topic date different from current system date, " +
               "consider adding new topic", file=sys.stderr)
 
