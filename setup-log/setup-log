@@ -9,12 +9,10 @@ import os
 DEFAULT_CONFIG_FILE_PATH = '/usr/local/etc/setup-log.conf'
 DEFAULT_LOG_MARKER = '<!-- begin setup log -->'
 
-config = {}
 
-
-def find_marker(line_list):
+def find_marker(log_marker, line_list):
     for i, line in enumerate(line_list):
-        if config['log_marker'] in line:
+        if log_marker in line:
             return i
     raise RuntimeError('Log marker not found in the setup log!')
 
@@ -60,29 +58,29 @@ def process_args():
 
 
 def read_config(config_file):
-    global config
-
     config = {
         'log_marker': DEFAULT_LOG_MARKER,
         'setup_log_path': None
     }
 
     for line in config_file:
-        line = line.strip().split('=')
-        if line[0] in ['log_marker', 'setup_log_path']:
+        line = line.strip().split('=', 1)
+        if line[0] in config.keys():
             config[line[0]] = line[1].strip('"')
 
+    return config
 
-def add_new_topic(log_lines, title, date):
+
+def add_new_topic(log_marker, log_lines, title, date):
     topic_heading = "{} ({})".format(title, date)
     topic_underline = "-" * len(topic_heading)
 
-    setup_log_start = find_marker(log_lines)
+    setup_log_start = find_marker(log_marker, log_lines)
     log_lines[setup_log_start + 1:setup_log_start + 1] = ["", topic_heading, topic_underline, ""]
 
 
-def add_new_message(log_lines, message, command):
-    new_message_line = find_marker(log_lines)
+def add_new_message(log_marker, log_lines, message, command):
+    new_message_line = find_marker(log_marker, log_lines)
 
     while new_message_line + 1 < len(log_lines):
         title_match = re.match(".*\(([0-9-]*)\)", log_lines[new_message_line])
@@ -122,21 +120,21 @@ def add_new_message(log_lines, message, command):
     log_lines[new_message_line:new_message_line] = new_message
 
 
-def write_log(log_lines):
-    temp_file = config['setup_log_path'] + ".tmp"
+def write_log(setup_log_path, log_lines):
+    temp_file = setup_log_path + ".tmp"
     with open(temp_file, 'w') as out_log:
         out_log.writelines((x + "\n") for x in log_lines)
 
     # Rename temp file to the real file name, thus overwriting the old file.
     # This is an atomic operation (POSIX requirement)
-    os.rename(temp_file, config['setup_log_path'])
+    os.rename(temp_file, setup_log_path)
 
 
 def main():
     global config
 
     args = process_args()
-    read_config(args.config)
+    config = read_config(args.config)
 
     # Log file location from args can override that in the config
     if args.log_file:
@@ -150,10 +148,10 @@ def main():
     config['log_file'].close()
 
     if args.new_title:
-        add_new_topic(log_lines, args.new_title, args.date)
-    add_new_message(log_lines, args.message, args.command)
+        add_new_topic(config['log_marker'], log_lines, args.new_title, args.date)
+    add_new_message(config['log_marker'], log_lines, args.message, args.command)
 
-    write_log(log_lines)
+    write_log(config['setup_log_path'], log_lines)
     return 0
 
 
