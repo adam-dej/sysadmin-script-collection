@@ -25,10 +25,7 @@ print_warning() {
 	END
 }
 
-send_mail() {
-	# TODO(kuci): Implement mail sending
-	:
-}
+# send_mail() is in the config file
 
 main() {
 	mkdir -p "${DATA_DIR}" || exit 1
