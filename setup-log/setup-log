@@ -46,6 +46,10 @@ def process_args():
                         help="override current date when adding new title. This option is " +
                              "ignored if '-t' is not present")
 
+    parser.add_argument('-s', metavar="SUBLEVEL", dest='sublevel',
+                        type=int, default=1,
+                        help="sublevel of the bullet point")
+
     parser.add_argument('-c', metavar="COMMAND", dest='command',
                         help="add a command as a sub-bullet")
 
@@ -89,7 +93,7 @@ def add_new_topic(log_marker, log_lines, title, date):
     log_lines[setup_log_start + 1:setup_log_start + 1] = ["", topic_heading, topic_underline, ""]
 
 
-def add_new_message(log_marker, log_lines, message, command):
+def add_new_message(log_marker, log_lines, message, command, sublevel):
     new_message_line = find_marker(log_marker, log_lines)
 
     while new_message_line + 1 < len(log_lines):
@@ -109,14 +113,14 @@ def add_new_message(log_marker, log_lines, message, command):
         print("Warning: last topic date different from current system date, " +
               "consider adding new topic", file=sys.stderr)
 
-    new_message = ["  * {}".format(message)]
+    new_message = [('  '*sublevel) + "* {}".format(message)]
     if command is not None:
-        new_message.append("    * `{}`".format(command))
+        new_message.append(('  '*(sublevel+1)) + "* `{}`".format(command))
 
     # This is where the first message should be.
     new_message_line += 1
 
-    if new_message_line < len(log_lines) and log_lines[new_message_line].startswith('  *'):
+    if new_message_line < len(log_lines) and re.match(" +\* ", log_lines[new_message_line]):
         # Indeed, the first message is here. Find line after last message in the first topic
         while new_message_line < len(log_lines) and log_lines[new_message_line] != "":
             new_message_line += 1
@@ -156,7 +160,7 @@ def main():
 
     if args.new_title:
         add_new_topic(config['log_marker'], log_lines, args.new_title, args.date)
-    add_new_message(config['log_marker'], log_lines, args.message, args.command)
+    add_new_message(config['log_marker'], log_lines, args.message, args.command, args.sublevel)
 
     write_log(config['setup_log_path'], log_lines)
 

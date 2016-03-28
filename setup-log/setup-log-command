@@ -1,0 +1,13 @@
+#!/bin/sh
+
+DEFAULT_SUBLEVEL=2
+
+if [ ! $# -eq 1 ]; then
+    echo "usage: setup-log-command '<command_to_execute_and_log>'"
+    echo "Note: the command must be in quotes!"
+    exit 1
+fi
+
+setup-log -s $DEFAULT_SUBLEVEL '`'"$@"'`'
+sh -c "$@"
+exit $?
