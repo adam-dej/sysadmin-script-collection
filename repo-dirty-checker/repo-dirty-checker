@@ -26,8 +26,12 @@ print_warning() {
 }
 
 send_mail() {
-	# TODO(kuci): Implement mail sending
-	:
+	mail -s "${MAIL_SUBJECT}" ${MAIL_ADDRESSES} <<-END
+	Warning: uncommited changes detected in ${1}. Please clean it up!
+
+	These users were online when the mess was detected:
+	${2}
+	END
 }
 
 main() {
