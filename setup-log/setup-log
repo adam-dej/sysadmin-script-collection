@@ -54,12 +54,16 @@ def process_args():
                         help="add a command as a sub-bullet")
 
     parser.add_argument('-e', action='store_true', dest='edit',
-                        help='opens logfile in a default editor')
+                        help='opens logfile in a default editor. If this option is present,' +
+                             ' MESSAGE is ignored')
 
-    parser.add_argument('message', metavar="MESSAGE", type=str, nargs='+',
+    parser.add_argument('message', metavar="MESSAGE", type=str, nargs='*',
                         help="message to be added to the logfile")
 
     args = parser.parse_args()
+    
+    if not (args.edit or args.message):
+        raise RuntimeError("Either -e flag, or at least one MESSAGE must be present!")
 
     # We are too lazy to put the message in quotes, so it comes in as a bunch of args. Join them.
     args.message = ' '.join(args.message)
