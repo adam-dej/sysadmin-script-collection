@@ -61,7 +61,7 @@ def process_args():
                         help="message to be added to the logfile")
 
     args = parser.parse_args()
-    
+
     if not (args.edit or args.message):
         raise RuntimeError("Either -e flag, or at least one MESSAGE must be present!")
 
@@ -117,9 +117,9 @@ def add_new_message(log_marker, log_lines, message, command, sublevel):
         print("Warning: last topic date different from current system date, " +
               "consider adding new topic", file=sys.stderr)
 
-    new_message = [('  '*sublevel) + "* {}".format(message)]
+    new_message = [('  ' * sublevel) + "* {}".format(message)]
     if command is not None:
-        new_message.append(('  '*(sublevel+1)) + "* `{}`".format(command))
+        new_message.append(('  ' * (sublevel + 1)) + "* `{}`".format(command))
 
     # This is where the first message should be.
     new_message_line += 1
@@ -169,7 +169,7 @@ def main():
     write_log(config['setup_log_path'], log_lines)
 
     if args.edit:
-        subprocess.call([os.getenv('EDITOR'), config['setup_log_path']])
+        subprocess.call([os.getenv('EDITOR') or 'vi', config['setup_log_path']])
 
     return 0
 
