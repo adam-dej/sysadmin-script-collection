@@ -19,6 +19,10 @@ init_users_file() {
 	echo > "${1}"
 }
 
+init_date_file() {
+	echo > "${1}"
+}
+
 print_warning() {
 	wall <<-END
 	Warning: uncommited changes detected in ${1}. Please clean up!
@@ -26,7 +30,7 @@ print_warning() {
 }
 
 send_mail() {
-	mail -s "${MAIL_SUBJECT}" ${MAIL_ADDRESSES} <<-END
+	mail -s "${MAIL_SUBJECT} ${3}" ${MAIL_ADDRESSES} <<-END
 	Warning: uncommited changes detected in ${1}. Please clean it up!
 
 	These users were online when the mess was detected:
@@ -41,6 +45,7 @@ main() {
 		data_subdir="${DATA_DIR}${dir}"
 		run_file="${data_subdir}/run"
 		users_file="${data_subdir}/users"
+		date_file="${data_subdir}/date"
 
 		mkdir -p "${data_subdir}" || exit 1
 
@@ -56,6 +61,12 @@ main() {
 			init_users_file "${users_file}"
 		fi
 
+		if [ ! -f "${date_file}" ]; then
+			touch "${date_file}" || exit 1
+
+			init_date_file "${date_file}"
+		fi
+
 		cd "${dir}" || exit 1
 
 		if [ ! -z "$(git status --porcelain)" ]; then
@@ -66,7 +77,11 @@ main() {
 				users="$(who | cut -d ' ' -f 1 | sort -u)"
 
 				echo "${users}" > "${users_file}"
+				
+				echo "$(date "+[%Y-%m-%d %H:%M]")" > "${date_file}"
 			fi
+
+			date="$(cat "${date_file}")"
 
 			run="$(expr "${run}" + 1)"
 
@@ -76,7 +91,7 @@ main() {
 				runs_after="$(expr "${run}" - "${WALL_AFTER}")"
 
 				if [ "$(expr "${runs_after}" % "${WALL_PERIOD}")" -eq "0" ]; then
-					print_warning "${dir}" "${users}"
+					print_warning "${dir}" "${users}" "${date}"
 				fi
 			fi
 
@@ -84,7 +99,7 @@ main() {
 				runs_after="$(expr "${run}" - "${MAIL_AFTER}")"
 
 				if [ "$(expr "${runs_after}" % "${MAIL_PERIOD}")" -eq "0" ]; then
-					send_mail "${dir}" "${users}"
+					send_mail "${dir}" "${users}" "${date}"
 				fi
 			fi
 		else
