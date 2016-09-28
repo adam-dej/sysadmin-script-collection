@@ -18,13 +18,16 @@ usage() {
 parse_args() {
 	# Parses arguments and removes properly-specific arguments from argument
 	# list, so that other arguments may be passed to command being executed
-	while getopts "m:t:" opt; do
+	while getopts "m:t:s" opt; do
 		case ${opt} in
 			m)
 				message=${OPTARG}
 				;;
 			t)
 				tag=${OPTARG}
+				;;
+			s)
+				snapless=true
 				;;
 		esac
 	done
@@ -126,14 +129,26 @@ properly() {
 	# Executing $command properly means:
 	msg '=== 0) check if config directories (such as /etc) are clean =============='
 	check_config_clean || complain 'Uncommitted config changes!'
-	msg '=== 1) snapshot =========================================================='
-	do_snapshot "pre-${tag}" || complain "Cannot create snapshot (exit code $?)!"
+
+	if [ ! "${snapless}" = true]; then
+		msg '=== 1) snapshot =========================================================='
+		do_snapshot "pre-${tag}" || complain "Cannot create snapshot (exit code $?)!"
+	else
+		msg '=== 1) skipping snapshot =========================================================='
+	fi
 	msg '=== execute command ======================================================'
 	execute "${command}"
+	check_config_clean || complain 'Uncommitted config changes!'
 	msg '=== n-2) commit config changes ==========================================='
 	ask 'Autocommit config changes?' && commit_config "${message}" "${tag}"
-	msg '=== n-1) snapshot ========================================================'
-	do_snapshot "post-${tag}" || msg "Couldn't create snapshot (exit code $?)!"
+	check_config_clean || complain 'Uncommitted config changes!'
+
+	if [ ! "${snapless}" = true]; then
+		msg '=== n-1) snapshot ========================================================'
+		do_snapshot "post-${tag}" || msg "Couldn't create snapshot (exit code $?)!"
+	else
+		msg '=== n-1) skipping snapshot ========================================================'
+	fi
 	msg '=== n) log the change ===================================================='
 	log "${message}" "${tag}" "${command}"
 	msg 'Done. Check setup log and commit it when you are done.'
