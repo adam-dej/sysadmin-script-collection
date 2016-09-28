@@ -1,0 +1,37 @@
+#!/bin/sh
+
+# Resets/postpones warnings from repo-dirty-checker
+
+CONFIG="/usr/local/etc/repo-dirty-checker.conf"
+
+DATA_DIR="/var/tmp/repo-dirty-checker"
+
+. $CONFIG
+
+
+delay=0
+while getopts "t:" opt; do
+	case ${opt} in
+		t)
+			delay="-${OPTARG}"
+			;;
+	esac
+done
+
+mkdir -p "${DATA_DIR}" || exit 1
+
+for dir in ${WATCHED_DIRS}; do
+	data_subdir="${DATA_DIR}${dir}"
+	run_file="${data_subdir}/run"
+
+	mkdir -p "${data_subdir}" || exit 1
+
+	if [ ! -f "${run_file}" ]; then
+		touch "${run_file}" || exit 1
+	fi
+
+	cd "${dir}" || exit 1
+
+	echo "${delay}" > "${run_file}"
+done
+
